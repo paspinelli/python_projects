@@ -1,0 +1,47 @@
+name: Build & upload PGP Providers COL Decrypt code
+on: 
+  push: 
+    branches:
+      - master
+    paths:
+      - 'lambdas/Operations/col/Providers/Decrypt/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BUCKET_NAME: "uala-lambda-builds"
+      BUCKET_FOLDER: "uala-col-pgp-providers"
+      AWS_ACCESS_KEY_ID: ${{ secrets.ARG_OP_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.ARG_OP_AWS_SECRET_ACCESS_KEY }}
+      FUNCTION_NAME: "Decrypt"
+      VERSION: "1.2"
+      UALA_GITHUB_TOKEN: ${{ secrets.UALA_GLOBAL_GITHUB_TOKEN }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          path: main
+      - name: Checkout Scripts
+        uses: actions/checkout@v2
+        with:
+          path: tools
+          repository: Bancar/uala-scripts-actions
+          token: ${{ env.UALA_GITHUB_TOKEN}}
+      - name: Install Python
+        uses: actions/setup-python@master
+        with:
+          python-version: 3.8
+      - name: Generate compressed project
+        run: |
+          echo "Compressing source files..."
+          zip -r $FUNCTION_NAME.zip *
+        working-directory: main/lambdas/Operations/col/Providers/Decrypt/
+      - name: Upload build to Amazon S3
+        run: |
+          python -m pip install --upgrade pip
+          pip3 install boto3
+          cp lambdas/Operations/col/Providers/Decrypt/$FUNCTION_NAME.zip .
+          cp ../tools/scripts/upload-build-python.py .
+          python3 upload-build-python.py
+        working-directory: main
